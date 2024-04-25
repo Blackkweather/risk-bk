@@ -1,0 +1,258 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String   @unique
+  users     User[]
+}
+
+model Status {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String   @unique
+  users     User[]
+}
+
+model User {
+  id               Int            @id @default(autoincrement())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  email            String         @unique
+  firstName        String
+  lastName         String
+  phone            String         @unique
+  hash             String
+  roleId           Int
+  role             Role           @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  statusId         Int
+  status           Status         @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  clientProfileId  Int?
+  client           ClientProfile? @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  externalProjects Project[]      @relation(name: "external")
+  internalProjects Project[]      @relation(name: "internal")
+}
+
+model ClientProfile {
+  id              Int                  @id @default(autoincrement())
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  denomination    String
+  judicial        String
+  sector          String
+  code            String?
+  config          ClientRiskConfigType
+  clientUsers     User[]
+  projects        Project[]
+  appetencyActive Boolean
+}
+
+model Project {
+  id                    Int                    @id @default(autoincrement())
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  name                  String
+  code                  String?
+  clientId              Int
+  client                ClientProfile          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  active                Boolean
+  internalUsers         User[]                 @relation(name: "internal")
+  externalUsers         User[]                 @relation(name: "external")
+  domaines              Domaine[]
+  entities              Entity[]
+  strategicObjectives   StrategicObjectif[]
+  performanceIndicators PerformanceIndicator[]
+  riskFamilies          RiskFamily[]
+
+  @@unique([clientId, name])
+}
+
+model Entity {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String
+  code      String?
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id])
+  parentId  Int?
+  children  Entity[] @relation("hierarchy")
+  parent    Entity?  @relation("hierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  risks     Risk[]
+
+  @@unique([projectId, name])
+}
+
+model Domaine {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  code      String?
+  name      String
+  projectId Int
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  processes Process[]
+
+  @@unique([projectId, name])
+}
+
+model Process {
+  id          Int        @id @default(autoincrement())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  name        String
+  code        String?
+  description String?
+  domaineId   Int
+  domaine     Domaine    @relation(fields: [domaineId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+  parentId    Int?
+  children    Process[]  @relation("subprocess")
+  parent      Process?   @relation("subprocess", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([domaineId, name])
+}
+
+model Activity {
+  id          Int        @id @default(autoincrement())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  name        String
+  code        String?
+  description String?
+  processId   Int
+  process     Process    @relation(fields: [processId], references: [id], onDelete: Cascade)
+  risks       Risk[]
+  parentId    Int?
+  children    Activity[] @relation("subactivity")
+  parent      Activity?  @relation("subactivity", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([processId, name])
+}
+
+model StrategicObjectif {
+  id                    Int                   @id @default(autoincrement())
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  name                  String
+  code                  String?
+  description           String?
+  projectId             Int
+  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  operationalObjectives OperationalObjectif[]
+  risks                 Risk[]
+
+  @@unique([projectId, name])
+}
+
+model OperationalObjectif {
+  id                   Int               @id @default(autoincrement())
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  name                 String
+  code                 String?
+  description          String?
+  strategicObjectiveId Int
+  strategicObjective   StrategicObjectif @relation(fields: [strategicObjectiveId], references: [id], onDelete: Cascade)
+  risks                Risk[]
+
+  @@unique([strategicObjectiveId, name])
+}
+
+model PerformanceIndicator {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  name         String
+  code         String?
+  description  String?
+  currentValue Decimal
+  targetValue  Decimal
+  projectId    Int
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, name])
+}
+
+model Risk {
+  id                     Int                  @id @default(autoincrement())
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  name                   String
+  code                   String?
+  description            String?
+  cause                  String
+  details                String?
+  frequency              Int
+  existantDb             String?
+  financialImpact        Int
+  legalImpact            Int
+  reputationImpact       Int
+  activityImpact         Int
+  peopleImpact           Int
+  brutCriticality        Int
+  evaluation             Int
+  netCriticality         Int
+  active                 Boolean
+  activityId             Int
+  activity               Activity             @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  entityId               Int
+  entity                 Entity               @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  operationalObjectiveId Int?
+  operationalObjective   OperationalObjectif? @relation(fields: [operationalObjectiveId], references: [id], onDelete: Cascade)
+  strategicObjectiveId   Int?
+  strategicObjective     StrategicObjectif?   @relation(fields: [strategicObjectiveId], references: [id], onDelete: Cascade)
+  controls               RiskControl[]
+  riskFamilyId           Int?
+  riskFamily             RiskFamily?          @relation(fields: [riskFamilyId], references: [id])
+}
+
+model RiskControl {
+  id                         Int      @id @default(autoincrement())
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  name                       String?
+  code                       String?
+  riskId                     Int
+  risk                       Risk     @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  meanIndicator              String?
+  meanOrganization           String?
+  meanManualPre              String?
+  meanManualPost             String?
+  meanIntegrated             String?
+  meanProgrammed             String?
+  meanReference              String?
+  evaluation                 Int?
+  proposedControl            String?
+  proposedControlDescription String?
+
+  @@unique([riskId, name])
+}
+
+model RiskFamily {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  name      String
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id])
+  risks     Risk[]
+}
+
+enum ClientRiskConfigType {
+  NORMAL
+  COEFFIECCIENT
+  BASIC
+}
