@@ -11,7 +11,6 @@ import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { RoleService } from '../role/role.service';
-import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class UserService {
@@ -33,7 +32,7 @@ export class UserService {
     allUsers.forEach(function (user) {
       delete user.hash;
     });
-    return users;
+    return allUsers;
   }
 
   async getUserByEmail(email: string) {
